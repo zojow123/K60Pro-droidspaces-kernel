@@ -76,4 +76,4 @@ jobs:
           name: socrates-hyperos-droidspaces-${{ github.run_number }}
           path: dist/
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 7
