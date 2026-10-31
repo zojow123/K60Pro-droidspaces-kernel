@@ -1,0 +1,79 @@
+name: Build socrates HyperOS Droidspaces kernel
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-kernel.yml'
+      - 'config/**'
+      - 'patches/**'
+      - 'scripts/**'
+      - 'evidence/vendor-module-versions.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: socrates-hyperos-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  kernel:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Prepare ephemeral Linux runner
+        run: bash scripts/prepare-runner.sh
+
+      - name: Restore pinned compiler cache
+        id: compiler-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: toolchain/clang-r563880c
+          key: aosp-clang-r563880c-571ed3e20b5708cea1177d5072853fc5b85b6877
+
+      - name: Fetch source, compiler, pick kABI slot and patch
+        run: bash scripts/prepare.sh
+
+      - name: Cache verified compiler for later builds
+        if: steps.compiler-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: toolchain/clang-r563880c
+          key: aosp-clang-r563880c-571ed3e20b5708cea1177d5072853fc5b85b6877
+
+      - name: Allocate link memory after downloading sources
+        run: |
+          set -euo pipefail
+          available=$(df -B1 --output=avail . | tail -1)
+          swap_gib=$(( available / 1073741824 - 18 ))
+          if (( swap_gib > 24 )); then swap_gib=24; fi
+          if (( swap_gib < 8 )); then
+            echo 'Insufficient disk for Full LTO output and swap'
+            df -h .
+            exit 1
+          fi
+          sudo fallocate -l "${swap_gib}G" /swapfile-socrates
+          sudo chmod 600 /swapfile-socrates
+          sudo mkswap /swapfile-socrates
+          sudo swapon /swapfile-socrates
+          df -h .
+          free -h
+
+      - name: Build with device configuration and compare module CRCs
+        run: bash scripts/build.sh
+
+      - name: Package Image and AnyKernel3
+        run: bash scripts/package.sh
+
+      - name: Upload kernel, config and build evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: socrates-hyperos-droidspaces-${{ github.run_number }}
+          path: dist/
+          if-no-files-found: warn
+          retention-days: 30

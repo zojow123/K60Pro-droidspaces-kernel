@@ -1,0 +1,9 @@
+kernel/
+toolchain/
+out/
+dist/
+.cache/
+backups/
+ref/
+*.tar.gz
+artifacts/

@@ -1,0 +1,37 @@
+{
+  "device": "socrates",
+  "rom": "HyperOS 3.0.304.0 / Android 16",
+  "kernel": {
+    "url": "https://github.com/aosp-mirror/kernel_common.git",
+    "branch": "android13-5.15",
+    "tag": "android13-5.15.194_r00",
+    "commit": "bce84c40a40be5a627fa563399c00689829c705a",
+    "release": "5.15.194-android13-8-00019-g4321180a397-ab15212794",
+    "localversion": "-android13-8",
+    "scmversion": "-00019-g4321180a397",
+    "build_number": "15212794",
+    "archive_url": "https://codeload.github.com/aosp-mirror/kernel_common/tar.gz/bce84c40a40be5a627fa563399c00689829c705a",
+    "archive_sha256": "",
+    "note": "设备原内核 5.15.194-android13-8-00019-g4321180a397-ab15212794；上游 ACK 无 4321180a397 该 commit，本构建以 tag android13-5.15.194_r00 为基线，vermagic 由 localversion/scmversion/build_number 精确复现。"
+  },
+  "toolchain": {
+    "url": "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86",
+    "commit": "9916fb51ccb914d62d35ad9a7b9b21d2ef046928",
+    "directory": "clang-r563880c",
+    "tree": "571ed3e20b5708cea1177d5072853fc5b85b6877",
+    "archive_url": "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/9916fb51ccb914d62d35ad9a7b9b21d2ef046928/clang-r563880c.tar.gz",
+    "version": "clang 21.0.0 (r563880c)",
+    "note": "设备原内核用 clang r450784e (14.0.7)，该 prebuilt 已被上游下架。改用 r563880c，需实机验证 CFI；若开机报 CFI type mismatch，回退 clang 14。"
+  },
+  "droidspaces": {
+    "url": "https://github.com/ravindu644/Droidspaces-OSS",
+    "documentation_commit": "64d53d17e765dad3028171204220f4d1134c7e37",
+    "release_tag": "v7.1.0",
+    "release_commit": "4344dc5fc4ab981f1cf2df54c93bf32a6ebbdc85",
+    "patch": "Documentation/resources/kernel-patches/GKI/below-kernel-6.12/001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch"
+  },
+  "anykernel3": {
+    "url": "https://github.com/osm0sis/AnyKernel3.git",
+    "commit": "c072981836cd3ee46ad52a5f2cba76ecb927cb1b"
+  }
+}
