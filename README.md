@@ -1,144 +1,160 @@
-# K60Pro-droidspaces-kernel
+# K60 Pro · Droidspaces 内核（HyperOS 3.0 / Android 16）
 
-为 **Redmi K60 Pro（socrates / 22127RK46C）· HyperOS 3.0.304.0 · Android 16 · 内核 5.15.194-android13-8** 构建带 Droidspaces 支持的 GKI 内核。
+> 为 **Redmi K60 Pro（socrates / 22127RK46C）** 定制的 GKI 内核，开启 [Droidspaces](https://github.com/ravindu644/Droidspaces-OSS) 容器运行所需的内核特性。
+>
+> **✅ 已实机刷入验证**
 
-不改动 init_boot（SukiSU LKM 保留），只替换当前槽 `boot` 的 Image。
+---
 
-## 设备现状（2026-10-28 实测）
+## 实机验证结果（2026-11-01）
 
-| 项 | 值 |
+| 项目 | 结果 |
 |---|---|
-| 内核 | `5.15.194-android13-8-00019-gf4321180a397-ab15212794`，clang r450784e (14.0.7) |
-| 内核性质 | 纯 AOSP GKI（common-android13-5.15），驱动全在 vendor_dlkm 的 .ko |
-| 缺的必须项 | `PID_NS` `IPC_NS` `USER_NS` `SYSVIPC` `POSIX_MQUEUE` `DEVTMPFS` `NETFILTER_XT_MATCH_ADDRTYPE` |
-| 已满足 | `NAMESPACES` `UTS_NS` `NET_NS` `CGROUPS` `CGROUP_SCHED` `SECCOMP` `VETH` `BRIDGE` `NETFILTER` `NF_NAT` `IPTABLES` `MASQUERADE` `MEMCG` `OVERLAY_FS` … |
+| 内核版本 | `5.15.194-android13-8-00019-gf4321180a397-ab15212794` |
+| 与原厂 vermagic | **完全一致**（一字不差）|
+| 厂商模块 ABI | **404 个模块，`crc_mismatches: 0`** |
+| 刷入后模块加载 | 401 个全部正常，无 `disagrees about version` |
+| CFI | 正常工作（`.cfi_jt` 后缀存在，无 type mismatch）|
+| `/proc/1/ns` | pid / ipc / user 命名空间全部出现 |
+| Droidspaces Check Requirements | **All required features found** |
 
-## 为什么不能刷社区那个 LineageOS 内核
+Check Requirements 明细：**MUST HAVE 10/10 ✅，RECOMMENDED 9/9 ✅**
 
-`shark-wan/K60Prosocrates-Kernel-DroidSpaces` 是 **5.15.211 + LineageOS 23.2** 的 boot，与本机 5.15.194 + HyperOS 3.0 的 vendor 模块不匹配，刷了会卡 logo。
-本仓库复用了它的**方法论与脚手架**（kABI padding、CRC 比对、AnyKernel3、Actions 流程），但源码基线、config、工具链全部换成本机的。
+> 仅 `--cpus`（CPU 限额）和 `--pids-limit`（进程数限额）两项 ✗ —— 这是**刻意留的**：开启 `CFS_BANDWIDTH` / `CGROUP_PIDS` 会让约 4000 个符号的 CRC 变化，破坏与原厂模块的兼容性。用 `cpu.weight`（相对权重）可以替代 `--cpus`。
 
-## 目录
+---
+
+## 启用的内核特性
 
 ```
-config/sources.lock.json      # 源码 commit / 工具链 / 补丁 / AnyKernel3 全部锁定
-config/device-baseline.config # 从本机 boot.img 的 IKCONFIG 提取的完整 .config（6962 行）
-config/droidspaces.config     # 需要打开的 fragment（18 项）
-config/anykernel.sh           # AnyKernel3 打包配置
-patches/                      # SYSVIPC kABI padding 三个候选（1-2-3 / 3-4-5 / 6-7-8）
-scripts/pick_kabi_slot.py     # 自动检测 task_struct 里哪些 RESERVE 槽空闲
-scripts/prepare.sh            # 拉源码+工具链、自动选槽、打补丁、写 .scmversion
-scripts/build.sh              # olddefconfig → 自检 → 编 Image → vermagic 校验 → CRC 比对
-scripts/package.sh            # 打 AnyKernel3 ZIP
-scripts/capture-device.sh     # 【在手机上跑】采集 ABI 基线
-scripts/parse-capture.py      # 【在电脑/本机跑】解析采集结果 → evidence/*.json
-scripts/check_module_abi.py   # Module.symvers vs 设备模块导入符号 CRC
-evidence/                     # ABI 基线（vendor-module-versions.json 约 1.5 MB）
+CONFIG_NAMESPACES=y
+CONFIG_PID_NS=y
+CONFIG_IPC_NS=y
+CONFIG_USER_NS=y
+CONFIG_SYSVIPC=y
+CONFIG_DEVTMPFS=y
+CONFIG_VETH=y
+CONFIG_BRIDGE=y
+CONFIG_NETFILTER=y
+CONFIG_CGROUPS / CGROUP_V2
+CONFIG_BLK_DEV_LOOP=y
+CONFIG_EXT4_FS=y
 ```
 
-## 流程
+完整差异见 `config.diff`（相对设备原厂配置）。
 
-### 第 1 步：在 K60 Pro 上采集 ABI 基线（必须，否则无法校验）
+---
 
-手机 root 后执行（Operit / Termux 均可）：
+## 下载
 
-```sh
-su -c 'sh /sdcard/Download/Operit工作区/项目/K60Pro-droidspaces-kernel/scripts/capture-device.sh'
-```
+| 文件 | 说明 |
+|---|---|
+| **`socrates-hyperos3-5.15.194-droidspaces.zip`** | **推荐** · AnyKernel3 刷机包，直接刷 |
+| `Image` | 裸内核镜像（47 MB），用于手动写入 boot 分区 |
+| `abi-report.json` | ABI 比对报告（404 模块 / 3063 符号）|
+| `config.diff` | 配置差异 |
+| `kernel.config` | 完整内核配置（6962 行）|
+| `build.json` / `compiler.txt` | 构建环境信息 |
+| `SHA256SUMS` | 校验和 |
 
-产物在 `/sdcard/Download/ds-capture/`：`config.gz`、`kallsyms.txt`、`modules.txt`、`device.txt`、`vendor-modules.tar`。
-只读，不动任何分区。
+---
 
-### 第 2 步：解析成 evidence
+## 刷机
 
-把 `ds-capture` 整个目录取回后：
+### 前置条件
+
+- Redmi K60 Pro（socrates），**HyperOS 3.0 / Android 16**
+- 已解锁 Bootloader + 已 root（SukiSU / KernelSU）
+- 备份：`dd if=/dev/block/by-name/boot_a of=/sdcard/boot_a.orig.img`
+
+### 方式一：AnyKernel3（推荐）
+
+在 KernelSU / SukiSU Manager 里刷入 `socrates-hyperos3-5.15.194-droidspaces.zip`，重启。
+
+### 方式二：手动写 boot 分区
 
 ```bash
-python3 scripts/parse-capture.py /path/to/ds-capture
+# 1. 备份
+dd if=/dev/block/by-name/boot_a of=/sdcard/boot_a.orig.img
+
+# 2. 检查原 boot.img 结构（K60 Pro 是 header 4096 + kernel，无 ramdisk/dtb）
+python3 - <<'EOF'
+import struct
+h = open('/sdcard/boot_a.orig.img','rb').read(4096)
+print('kernel_size =', struct.unpack('<I', h[8:12])[0])
+print('ramdisk_size =', struct.unpack('<I', h[12:16])[0])
+EOF
+
+# 3. 修改 header 的 kernel_size（偏移 0x08，小端 uint32），拼接新 Image，写回
+
+# 4. 校验后重启
+md5sum /dev/block/by-name/boot_a   # 与写入值比对
+sync; echo b > /proc/sysrq-trigger
 ```
 
-会重新生成 `config/device-baseline.config`、`evidence/vendor-module-versions.json`、`evidence/device-summary.json`。
+> ⚠️ `reboot` 命令在 chroot 里跑不了（Android linker 路径问题），用 sysrq 触发。
 
-### 第 3 步：推到 GitHub 跑 Actions
+### 刷后验证
 
 ```bash
-git init && git add -A && git commit -m "init: socrates HyperOS droidspaces kernel"
-git remote add origin git@github.com:<you>/K60Pro-droidspaces-kernel.git
-git push -u origin main
+uname -r                      # 应显示 5.15.194-android13-8-00019-gf4321180a397-ab15212794
+ls /proc/1/ns/                # 应有 pid / ipc / user
+lsmod | wc -l                 # 应有 401 个模块
+dmesg | grep -i "cfi"         # 不应有 type mismatch
 ```
 
-然后 Actions → **Build socrates HyperOS Droidspaces kernel** → Run workflow。
-约 60–120 分钟（Full LTO 很慢）。产物 `socrates-hyperos-droidspaces-N` 里有：
-
-- `Image` — 原始内核
-- `socrates-hyperos3-5.15.194-droidspaces.zip` — AnyKernel3，直接刷
-- `abi-report.json` — **必须看这个**
-- `kernel.config` / `config.diff` / `source.patch` / `build.json` / `SHA256SUMS`
-
-### 第 4 步：判读 abi-report.json
-
-```json
-{"modules": 401, "matched_symbols": 3971, "crc_mismatches": [], ...}
-```
-
-- `crc_mismatches` 为空 → 可以刷
-- 非空 → **不要刷**，把 mismatches 列表发出来，需要换 padding 槽或换源码基线
-
-### 第 5 步：刷机
-
-**先备份当前 boot**（其实 `项目/K60Pro-mainline/固件/images/boot.img` 已有，但再确认一次）：
+### 回滚
 
 ```bash
-adb shell su -c 'dd if=/dev/block/by-name/boot_a of=/sdcard/boot_a.orig.img'
-adb pull /sdcard/boot_a.orig.img
+dd if=/sdcard/boot_a.orig.img of=/dev/block/by-name/boot_a
+sync; echo b > /proc/sysrq-trigger
 ```
 
-刷入（KernelSU/SukiSU 环境下用 AnyKernel3 ZIP 最稳）：
+---
 
-```bash
-adb reboot sideload        # 或进 recovery / KernelSU 的刷机入口
-adb sideload socrates-hyperos3-5.15.194-droidspaces.zip
+## 构建（可复现）
+
+源码基线：ACK tag `android13-5.15.194_r00`（commit `bce84c40`）
+
+关键点：
+
+1. **vermagic 必须精确复现**：`LOCALVERSION=-android13-8` + `.scmversion` 内容 `-00019-gf4321180a397` + `BUILD_NUMBER=15212794`
+2. **`CONFIG_UNUSED_KSYMS_WHITELIST=n`**：原厂配置指向小米构建机的绝对路径（`/mnt/disks/build-disk/.../abi_symbollist.raw`），不改会构建失败
+3. **kABI padding**：`task_struct` 尾部 6/7/8 号 reserve 槽全部空闲，用 `scripts/pick_kabi_slot.py` 自动检测
+4. **工具链**：clang r563880c（21.0.0），必须支持 Full LTO + CFI
+5. **构建环境**：4 核 16 GB（public 仓库免费 runner 约 20 分钟；2 核 7 GB 跑不完）
+
+产物验证会跑 `scripts/check_module_abi.py`，把 404 个厂商模块的 `__versions` 段与构建出的 `Module.symvers` 逐一比对，`crc_mismatches` 为空才允许刷机。
+
+---
+
+## 仓库结构
+
+```
+config/device-baseline.config          设备原厂内核配置（6962 行）
+evidence/vendor-module-versions.json   404 个厂商模块的 ABI 基线
+scripts/pick_kabi_slot.py              自动选 kABI padding 槽
+scripts/check_module_abi.py            模块 CRC 比对
+scripts/extract-vendor-boot-ko.py      从 vendor_boot 提取 .ko
+.github/workflows/build.yml            CI 构建流程
 ```
 
-或者 fastboot（确认当前槽是 a 再刷）：
+---
 
-```bash
-adb shell getprop ro.boot.slot_suffix     # 先看是 _a 还是 _b
-adb reboot bootloader
-fastboot flash boot_a Image
-fastboot reboot
-```
+## 免责声明
 
-回滚：
+刷机有风险，变砖、丢数据、失去保修都是可能的。请先备份 boot 分区并确认机型匹配（**仅限 Redmi K60 Pro / socrates / HyperOS 3.0**，其他机型刷了必炸）。
 
-```bash
-fastboot flash boot_a boot_a.orig.img
-```
+本项目仅供学习和自用，不对任何损失负责。
 
-### 第 6 步：验证
+---
 
-```bash
-adb shell uname -r                    # 应为 5.15.194-android13-8-00019-gf4321180a397-ab15212794
-adb shell su -c 'ls /proc/1/ns'       # 应出现 pid ipc user
-adb shell su -c 'zcat /proc/config.gz | grep -E "CONFIG_(PID_NS|IPC_NS|SYSVIPC|DEVTMPFS)="'
-adb shell dmesg | grep -iE 'cfi|modversion|module verification'
-```
+## 相关
 
-然后装 Droidspaces APK → Settings → Requirements → **Check Requirements**。
+- [Droidspaces](https://github.com/ravindu644/Droidspaces-OSS) —— Android 上的容器运行时
+- [ACK (Android Common Kernel)](https://android.googlesource.com/kernel/common/)
+- 社区同类项目：[shark-wan/K60Prosocrates-Kernel-DroidSpaces](https://github.com/shark-wan/K60Prosocrates-Kernel-DroidSpaces)（LineageOS 23.2 版）
 
-## 已知风险
+---
 
-| 风险 | 说明 | 应对 |
-|---|---|---|
-| `UNUSED_KSYMS_WHITELIST` | 基线里指向小米构建机绝对路径 `/mnt/disks/build-disk/.../abi_symbollist.raw`，不存在 | 已在 fragment 里 `CONFIG_TRIM_UNUSED_KSYMS=n`，导出全部符号（Image 大几 MB） |
-| clang 版本 | 设备用 r450784e(14.0.7)，上游已下架；本仓库用 r563880c(21.0.0) | 开机 dmesg 查 `CFI:` 报错；失败则需找 clang 14 工具链 |
-| 源码基线 | 设备是 `gf4321180a397`，上游 ACK 无此 commit；用 tag `android13-5.15.194_r00` | 靠 CRC 比对兜底；mismatch 非空就不能刷 |
-| Full LTO | 全量 LTO 链接吃 16 GB 内存 + 30 GB 磁盘 | Actions 里已挂 swap；本地别试 |
-| `CFS_BANDWIDTH` / `CGROUP_PIDS` | 开了会改 struct 大小，约 4000 个导出符号 CRC 变化，无补丁可救 | 保持关闭，`--cpus` / `--pids-limit` 灰掉即可 |
-| AVB | boot 内有 vbmeta（偏移 47,599,616，896 字节） | AnyKernel3 用 `PATCH_VBMETA_FLAG=0` 不改；若开机校验失败需关 verity |
-
-## 参考
-
-- Droidspaces 官方内核配置指南：`ravindu644/Droidspaces-OSS` → `Documentation/Kernel-Configuration.md`
-- 同 SoC 先例：`shark-wan/K60Prosocrates-Kernel-DroidSpaces`（LineageOS 23.2，已实机验证）
-- 本机硬件逆向：`/sdcard/Download/Operit工作区/项目/K60Pro-mainline/`
+*构建于 2026-11-01 · 已在 Redmi K60 Pro 实机验证*
