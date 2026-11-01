@@ -6,13 +6,13 @@
     "branch": "android13-5.15",
     "tag": "android13-5.15.194_r00",
     "commit": "bce84c40a40be5a627fa563399c00689829c705a",
-    "release": "5.15.194-android13-8-00019-g4321180a397-ab15212794",
+    "release": "5.15.194-android13-8-00019-gf4321180a397-ab15212794",
     "localversion": "-android13-8",
-    "scmversion": "-00019-g4321180a397",
+    "scmversion": "-00019-gf4321180a397",
     "build_number": "15212794",
     "archive_url": "https://codeload.github.com/aosp-mirror/kernel_common/tar.gz/bce84c40a40be5a627fa563399c00689829c705a",
     "archive_sha256": "",
-    "note": "设备原内核 5.15.194-android13-8-00019-g4321180a397-ab15212794；上游 ACK 无 4321180a397 该 commit，本构建以 tag android13-5.15.194_r00 为基线，vermagic 由 localversion/scmversion/build_number 精确复现。"
+    "note": "设备原内核 5.15.194-android13-8-00019-gf4321180a397-ab15212794；上游 ACK 无 4321180a397 该 commit，本构建以 tag android13-5.15.194_r00 为基线，vermagic 由 localversion/scmversion/build_number 精确复现。"
   },
   "toolchain": {
     "url": "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86",

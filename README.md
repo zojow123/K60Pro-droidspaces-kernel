@@ -8,7 +8,7 @@
 
 | 项 | 值 |
 |---|---|
-| 内核 | `5.15.194-android13-8-00019-g4321180a397-ab15212794`，clang r450784e (14.0.7) |
+| 内核 | `5.15.194-android13-8-00019-gf4321180a397-ab15212794`，clang r450784e (14.0.7) |
 | 内核性质 | 纯 AOSP GKI（common-android13-5.15），驱动全在 vendor_dlkm 的 .ko |
 | 缺的必须项 | `PID_NS` `IPC_NS` `USER_NS` `SYSVIPC` `POSIX_MQUEUE` `DEVTMPFS` `NETFILTER_XT_MATCH_ADDRTYPE` |
 | 已满足 | `NAMESPACES` `UTS_NS` `NET_NS` `CGROUPS` `CGROUP_SCHED` `SECCOMP` `VETH` `BRIDGE` `NETFILTER` `NF_NAT` `IPTABLES` `MASQUERADE` `MEMCG` `OVERLAY_FS` … |
@@ -118,7 +118,7 @@ fastboot flash boot_a boot_a.orig.img
 ### 第 6 步：验证
 
 ```bash
-adb shell uname -r                    # 应为 5.15.194-android13-8-00019-g4321180a397-ab15212794
+adb shell uname -r                    # 应为 5.15.194-android13-8-00019-gf4321180a397-ab15212794
 adb shell su -c 'ls /proc/1/ns'       # 应出现 pid ipc user
 adb shell su -c 'zcat /proc/config.gz | grep -E "CONFIG_(PID_NS|IPC_NS|SYSVIPC|DEVTMPFS)="'
 adb shell dmesg | grep -iE 'cfi|modversion|module verification'
@@ -132,7 +132,7 @@ adb shell dmesg | grep -iE 'cfi|modversion|module verification'
 |---|---|---|
 | `UNUSED_KSYMS_WHITELIST` | 基线里指向小米构建机绝对路径 `/mnt/disks/build-disk/.../abi_symbollist.raw`，不存在 | 已在 fragment 里 `CONFIG_TRIM_UNUSED_KSYMS=n`，导出全部符号（Image 大几 MB） |
 | clang 版本 | 设备用 r450784e(14.0.7)，上游已下架；本仓库用 r563880c(21.0.0) | 开机 dmesg 查 `CFI:` 报错；失败则需找 clang 14 工具链 |
-| 源码基线 | 设备是 `g4321180a397`，上游 ACK 无此 commit；用 tag `android13-5.15.194_r00` | 靠 CRC 比对兜底；mismatch 非空就不能刷 |
+| 源码基线 | 设备是 `gf4321180a397`，上游 ACK 无此 commit；用 tag `android13-5.15.194_r00` | 靠 CRC 比对兜底；mismatch 非空就不能刷 |
 | Full LTO | 全量 LTO 链接吃 16 GB 内存 + 30 GB 磁盘 | Actions 里已挂 swap；本地别试 |
 | `CFS_BANDWIDTH` / `CGROUP_PIDS` | 开了会改 struct 大小，约 4000 个导出符号 CRC 变化，无补丁可救 | 保持关闭，`--cpus` / `--pids-limit` 灰掉即可 |
 | AVB | boot 内有 vbmeta（偏移 47,599,616，896 字节） | AnyKernel3 用 `PATCH_VBMETA_FLAG=0` 不改；若开机校验失败需关 verity |

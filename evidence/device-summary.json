@@ -1,0 +1,17 @@
+{
+  "collected_date": "2026-11-01",
+  "device": "socrates",
+  "model": "22127RK46C",
+  "rom_version": "OS3.0.304.0.WMKCNXM",
+  "android_version": "16",
+  "security_patch": "",
+  "kernel_release": "5.15.194-android13-8-00019-gf4321180a397-ab15212794",
+  "selinux": "",
+  "active_slot": "",
+  "boot_partition_size": 0,
+  "init_boot_partition_size": 0,
+  "loaded_modules": 401,
+  "root_module": [
+    "kernelsu"
+  ]
+}
